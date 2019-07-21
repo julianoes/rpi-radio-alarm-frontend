@@ -1,7 +1,7 @@
 module Main exposing (Model, Msg(..), main)
 
 import Browser exposing (sandbox)
-import Html exposing (Html, button, div, text)
+import Html exposing (Html, button, div, h1, text)
 import Html.Events exposing (onClick)
 import Http
 import Json.Decode exposing (Decoder, field, string)
@@ -114,18 +114,21 @@ subscriptions model =
 
 view : Model -> Html Msg
 view model =
-    case model of
-        Failure ->
-            text "A failure happened."
+    div []
+        [ h1 [] [ text "RPi Radio Alarm" ]
+        , case model of
+            Failure ->
+                text "A failure happened."
 
-        Loading ->
-            button [] [ text "Loading" ]
+            Loading ->
+                button [] [ text "Loading" ]
 
-        On ->
-            button [ onClick StopRadio ] [ text "Stop radio" ]
+            On ->
+                button [ onClick StopRadio ] [ text "Stop radio" ]
 
-        Off ->
-            button [ onClick StartRadio ] [ text "Start radio" ]
+            Off ->
+                button [ onClick StartRadio ] [ text "Start radio" ]
+        ]
 
 
 

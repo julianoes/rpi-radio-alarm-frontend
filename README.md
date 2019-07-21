@@ -5,5 +5,5 @@ An Elm frontend for rpi-radio-alarm
 ## Deploy
 
 ```
-elm make src/Main.elm && scp index.html pi@<IP>:/home/pi/src/rpi-radio-alarm/static/
+elm make src/Main.elm --output=main.js && scp index.html main.js styles.css pi@<PI>:/home/pi/src/rpi-radio-alarm/static/
 ```
