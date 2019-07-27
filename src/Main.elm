@@ -5,6 +5,7 @@ import Html exposing (Html, button, div, h1, text)
 import Html.Events exposing (onClick)
 import Http
 import Json.Decode exposing (Decoder, field, string)
+import String exposing (startsWith)
 
 
 
@@ -25,20 +26,39 @@ main =
 -- MODEL
 
 
-type Model
+type alias Model =
+    { radioState : RadioState
+    , alarmState : AlarmState
+    }
+
+
+type RadioState
+    = Playing
+    | NotPlaying
+    | RadioLoading
+    | RadioFailure
+
+
+type AlarmState
     = On
     | Off
-    | Loading
-    | Failure
+    | AlarmLoading
+    | AlarmFailure
 
 
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( Loading
-    , Http.get
-        { url = "http://192.168.0.234/radio/status"
-        , expect = Http.expectJson GotJson jsonDecoder
-        }
+    ( { radioState = RadioLoading, alarmState = AlarmLoading }
+    , Cmd.batch
+        [ Http.get
+            { url = "http://192.168.0.234/radio/status"
+            , expect = Http.expectJson GotJson jsonDecoder
+            }
+        , Http.get
+            { url = "http://192.168.0.234/alarm/status"
+            , expect = Http.expectJson GotJson jsonDecoder
+            }
+        ]
     )
 
 
@@ -58,6 +78,22 @@ sendStopRadio =
         }
 
 
+sendAlarmOn : Cmd Msg
+sendAlarmOn =
+    Http.get
+        { url = "http://192.168.0.234/alarm/on"
+        , expect = Http.expectJson GotJson jsonDecoder
+        }
+
+
+sendAlarmOff : Cmd Msg
+sendAlarmOff =
+    Http.get
+        { url = "http://192.168.0.234/alarm/off"
+        , expect = Http.expectJson GotJson jsonDecoder
+        }
+
+
 
 -- UPDATE
 
@@ -66,6 +102,8 @@ type Msg
     = GotJson (Result Http.Error String)
     | StartRadio
     | StopRadio
+    | SetAlarmOn
+    | SetAlarmOff
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -75,28 +113,46 @@ update msg model =
             case result of
                 Ok fullText ->
                     if fullText == "stopped" then
-                        ( Off, Cmd.none )
+                        ( { model | radioState = NotPlaying }, Cmd.none )
 
                     else if fullText == "started" then
-                        ( On, Cmd.none )
+                        ( { model | radioState = Playing }, Cmd.none )
 
                     else if fullText == "ok let's start this" then
-                        ( On, Cmd.none )
+                        ( { model | radioState = Playing }, Cmd.none )
 
                     else if fullText == "ok let's stop this" then
-                        ( Off, Cmd.none )
+                        ( { model | radioState = NotPlaying }, Cmd.none )
+
+                    else if fullText == "off" then
+                        ( { model | alarmState = Off }, Cmd.none )
+
+                    else if String.startsWith "on at" fullText then
+                        ( { model | alarmState = On }, Cmd.none )
+
+                    else if fullText == "ok, set alarm on" then
+                        ( { model | alarmState = On }, Cmd.none )
+
+                    else if fullText == "ok, set alarm off" then
+                        ( { model | alarmState = Off }, Cmd.none )
 
                     else
-                        ( Failure, Cmd.none )
+                        ( { model | radioState = RadioFailure }, Cmd.none )
 
                 Err _ ->
-                    ( Failure, Cmd.none )
+                    ( { model | radioState = RadioFailure }, Cmd.none )
 
         StartRadio ->
-            ( Loading, sendStartRadio )
+            ( { model | radioState = RadioLoading }, sendStartRadio )
 
         StopRadio ->
-            ( Loading, sendStopRadio )
+            ( { model | radioState = RadioLoading }, sendStopRadio )
+
+        SetAlarmOn ->
+            ( { model | alarmState = AlarmLoading }, sendAlarmOn )
+
+        SetAlarmOff ->
+            ( { model | alarmState = AlarmLoading }, sendAlarmOff )
 
 
 
@@ -116,18 +172,30 @@ view : Model -> Html Msg
 view model =
     div []
         [ h1 [] [ text "RPi Radio Alarm" ]
-        , case model of
-            Failure ->
+        , case model.radioState of
+            RadioFailure ->
                 text "A failure happened."
 
-            Loading ->
+            RadioLoading ->
                 button [] [ text "Loading" ]
 
-            On ->
-                button [ onClick StopRadio ] [ text "Stop radio" ]
+            Playing ->
+                button [ onClick StopRadio ] [ text "Radio playing" ]
+
+            NotPlaying ->
+                button [ onClick StartRadio ] [ text "Radio not playing" ]
+        , case model.alarmState of
+            AlarmFailure ->
+                text "A failure happened."
+
+            AlarmLoading ->
+                button [] [ text "Loading" ]
 
             Off ->
-                button [ onClick StartRadio ] [ text "Start radio" ]
+                button [ onClick SetAlarmOn ] [ text "Alarm off" ]
+
+            On ->
+                button [ onClick SetAlarmOff ] [ text "Alarm On" ]
         ]
 
 
