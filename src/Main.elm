@@ -1,11 +1,11 @@
 module Main exposing (Model, Msg(..), main)
 
 import Browser exposing (sandbox)
-import Html exposing (Html, button, div, h1, text)
-import Html.Events exposing (onClick)
+import Html exposing (Html, button, div, h1, input, p, text)
+import Html.Attributes exposing (class, max, maxlength, min, placeholder, step, value)
+import Html.Events exposing (onClick, onInput)
 import Http
 import Json.Decode exposing (Decoder, field, string)
-import String exposing (startsWith)
 
 
 
@@ -29,6 +29,8 @@ main =
 type alias Model =
     { radioState : RadioState
     , alarmState : AlarmState
+    , alarmTime : AlarmTime
+    , alarmTimeStatus : AlarmTimeStatus
     }
 
 
@@ -46,9 +48,24 @@ type AlarmState
     | AlarmFailure
 
 
+type AlarmTimeStatus
+    = None
+    | Saving
+    | Saved
+    | Failed
+
+
+type alias AlarmTime =
+    { hours : String, mins : String }
+
+
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( { radioState = RadioLoading, alarmState = AlarmLoading }
+    ( { radioState = RadioLoading
+      , alarmState = AlarmLoading
+      , alarmTime = { hours = "", mins = "" }
+      , alarmTimeStatus = None
+      }
     , Cmd.batch
         [ Http.get
             { url = "http://192.168.0.234/radio/status"
@@ -94,6 +111,14 @@ sendAlarmOff =
         }
 
 
+sendChangeAlarmTime : String -> String -> Cmd Msg
+sendChangeAlarmTime hours mins =
+    Http.get
+        { url = "http://192.168.0.234/alarm/time/" ++ hours ++ ":" ++ mins
+        , expect = Http.expectJson GotJson jsonDecoder
+        }
+
+
 
 -- UPDATE
 
@@ -104,6 +129,8 @@ type Msg
     | StopRadio
     | SetAlarmOn
     | SetAlarmOff
+    | ChangeAlarmTimeHours String
+    | ChangeAlarmTimeMins String
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -128,13 +155,21 @@ update msg model =
                         ( { model | alarmState = Off }, Cmd.none )
 
                     else if String.startsWith "on at" fullText then
-                        ( { model | alarmState = On }, Cmd.none )
+                        ( { model
+                            | alarmState = On
+                            , alarmTime = extractTime fullText
+                          }
+                        , Cmd.none
+                        )
 
                     else if fullText == "ok, set alarm on" then
                         ( { model | alarmState = On }, Cmd.none )
 
                     else if fullText == "ok, set alarm off" then
                         ( { model | alarmState = Off }, Cmd.none )
+
+                    else if String.startsWith "time set to" fullText then
+                        ( { model | alarmTimeStatus = Saved }, Cmd.none )
 
                     else
                         ( { model | radioState = RadioFailure }, Cmd.none )
@@ -154,6 +189,117 @@ update msg model =
         SetAlarmOff ->
             ( { model | alarmState = AlarmLoading }, sendAlarmOff )
 
+        ChangeAlarmTimeMins mins ->
+            if isTimesValid model.alarmTime.hours mins then
+                ( { model
+                    | alarmTimeStatus = Saving
+                    , alarmTime =
+                        { hours = model.alarmTime.hours, mins = mins }
+                  }
+                , sendChangeAlarmTime model.alarmTime.hours mins
+                )
+
+            else
+                ( { model
+                    | alarmTimeStatus = None
+                    , alarmTime = { hours = model.alarmTime.hours, mins = mins }
+                  }
+                , Cmd.none
+                )
+
+        ChangeAlarmTimeHours hours ->
+            if isTimesValid hours model.alarmTime.mins then
+                ( { model
+                    | alarmTimeStatus = Saving
+                    , alarmTime = { hours = hours, mins = model.alarmTime.mins }
+                  }
+                , sendChangeAlarmTime hours model.alarmTime.mins
+                )
+
+            else
+                ( { model
+                    | alarmTimeStatus = None
+                    , alarmTime = { hours = hours, mins = model.alarmTime.mins }
+                  }
+                , Cmd.none
+                )
+
+
+isTimesValid : String -> String -> Bool
+isTimesValid hours mins =
+    case ( String.toInt hours, String.toInt mins ) of
+        ( Just h, Just m ) ->
+            isValidHours h && isValidMins m
+
+        _ ->
+            False
+
+
+extractTime : String -> AlarmTime
+extractTime text =
+    case listToTuple2 (String.split ":" (String.slice 6 11 text)) of
+        Just ( hours, mins ) ->
+            { hours = hours, mins = mins }
+
+        Nothing ->
+            { hours = "", mins = "" }
+
+
+listToTuple2 : List String -> Maybe ( String, String )
+listToTuple2 list =
+    case list of
+        [ a, b ] ->
+            Just ( a, b )
+
+        _ ->
+            Nothing
+
+
+extractHours : String -> Maybe Int
+extractHours text =
+    let
+        hours =
+            String.toInt text
+    in
+    case hours of
+        Just h ->
+            if isValidHours h then
+                Just h
+
+            else
+                Nothing
+
+        Nothing ->
+            Nothing
+
+
+isValidHours : Int -> Bool
+isValidHours hours =
+    hours >= 0 && hours < 24
+
+
+extractMins : String -> Maybe Int
+extractMins text =
+    let
+        mins =
+            String.toInt text
+    in
+    case mins of
+        Just m ->
+            if isValidMins m then
+                Just m
+
+            else
+                Nothing
+
+        Nothing ->
+            Nothing
+
+
+isValidMins : Int -> Bool
+isValidMins mins =
+    mins >= 0 && mins < 60
+
 
 
 -- SUBSCRIPTIONS
@@ -170,7 +316,7 @@ subscriptions model =
 
 view : Model -> Html Msg
 view model =
-    div []
+    div [ class "container" ]
         [ h1 [] [ text "RPi Radio Alarm" ]
         , case model.radioState of
             RadioFailure ->
@@ -195,7 +341,42 @@ view model =
                 button [ onClick SetAlarmOn ] [ text "Alarm off" ]
 
             On ->
-                button [ onClick SetAlarmOff ] [ text "Alarm On" ]
+                div []
+                    [ button [ onClick SetAlarmOff ] [ text "Alarm On" ]
+                    , input
+                        [ placeholder "Hours"
+                        , value model.alarmTime.hours
+                        , onInput ChangeAlarmTimeHours
+                        , maxlength 2
+                        , min "0"
+                        , step "1"
+                        , max "23"
+                        ]
+                        []
+                    , div [ class "colon" ] [ text ":" ]
+                    , input
+                        [ placeholder "Mins"
+                        , value model.alarmTime.mins
+                        , onInput ChangeAlarmTimeMins
+                        , maxlength 2
+                        , min "0"
+                        , step "1"
+                        , max "59"
+                        ]
+                        []
+                    , case model.alarmTimeStatus of
+                        None ->
+                            text ""
+
+                        Saved ->
+                            text "Saved"
+
+                        Saving ->
+                            text "Saving"
+
+                        Failed ->
+                            text "Failed"
+                    ]
         ]
 
 

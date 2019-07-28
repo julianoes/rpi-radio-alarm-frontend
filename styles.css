@@ -1,9 +1,10 @@
 body {
     width: 100%;
+    text-align: center;
 }
 
-div {
-    width: 90%;
+div.container {
+    width: 80%;
     margin: auto;
 }
 
@@ -69,4 +70,16 @@ button {
     text-decoration-line: none;
     text-decoration-style: solid;
     text-shadow: rgba(0, 0, 0, 0.15) 0px 1px 0px;
+}
+
+input {
+    width: 30%;
+    font-size: 3em;
+    height: 4em;
+    text-align: center;
+}
+
+div.colon {
+    font-size: 3em;
+    display: inline;
 }
