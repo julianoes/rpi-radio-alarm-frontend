@@ -1,11 +1,13 @@
 module Main exposing (Model, Msg(..), main)
 
 import Browser exposing (sandbox)
+import Delay
 import Html exposing (Html, button, div, h1, input, p, text)
 import Html.Attributes exposing (class, max, maxlength, min, placeholder, step, value)
 import Html.Events exposing (onClick, onInput)
 import Http
 import Json.Decode exposing (Decoder, field, string)
+import Platform
 
 
 
@@ -119,6 +121,11 @@ sendChangeAlarmTime hours mins =
         }
 
 
+removeSavedLater : Cmd Msg
+removeSavedLater =
+    Delay.after 1 Delay.Second RemoveSaved
+
+
 
 -- UPDATE
 
@@ -131,6 +138,7 @@ type Msg
     | SetAlarmOff
     | ChangeAlarmTimeHours String
     | ChangeAlarmTimeMins String
+    | RemoveSaved
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -169,7 +177,7 @@ update msg model =
                         ( { model | alarmState = Off }, Cmd.none )
 
                     else if String.startsWith "time set to" fullText then
-                        ( { model | alarmTimeStatus = Saved }, Cmd.none )
+                        ( { model | alarmTimeStatus = Saved }, removeSavedLater )
 
                     else
                         ( { model | radioState = RadioFailure }, Cmd.none )
@@ -223,6 +231,13 @@ update msg model =
                   }
                 , Cmd.none
                 )
+
+        RemoveSaved ->
+            ( { model
+                | alarmTimeStatus = None
+              }
+            , Cmd.none
+            )
 
 
 isTimesValid : String -> String -> Bool
