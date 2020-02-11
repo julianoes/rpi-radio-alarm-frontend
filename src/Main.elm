@@ -363,9 +363,9 @@ view model =
                         , value model.alarmTime.hours
                         , onInput ChangeAlarmTimeHours
                         , maxlength 2
-                        , min "0"
+                        , Html.Attributes.min "0"
                         , step "1"
-                        , max "23"
+                        , Html.Attributes.max "23"
                         ]
                         []
                     , div [ class "colon" ] [ text ":" ]
@@ -374,9 +374,9 @@ view model =
                         , value model.alarmTime.mins
                         , onInput ChangeAlarmTimeMins
                         , maxlength 2
-                        , min "0"
+                        , Html.Attributes.min "0"
                         , step "1"
-                        , max "59"
+                        , Html.Attributes.max "59"
                         ]
                         []
                     , case model.alarmTimeStatus of
