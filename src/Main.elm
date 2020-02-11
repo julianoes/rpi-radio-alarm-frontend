@@ -70,11 +70,11 @@ init _ =
       }
     , Cmd.batch
         [ Http.get
-            { url = "http://192.168.0.234/radio/status"
+            { url = "http://192.168.0.235/radio/status"
             , expect = Http.expectJson GotJson jsonDecoder
             }
         , Http.get
-            { url = "http://192.168.0.234/alarm/status"
+            { url = "http://192.168.0.235/alarm/status"
             , expect = Http.expectJson GotJson jsonDecoder
             }
         ]
@@ -84,7 +84,7 @@ init _ =
 sendStartRadio : Cmd Msg
 sendStartRadio =
     Http.get
-        { url = "http://192.168.0.234/radio/start"
+        { url = "http://192.168.0.235/radio/start"
         , expect = Http.expectJson GotJson jsonDecoder
         }
 
@@ -92,7 +92,7 @@ sendStartRadio =
 sendStopRadio : Cmd Msg
 sendStopRadio =
     Http.get
-        { url = "http://192.168.0.234/radio/stop"
+        { url = "http://192.168.0.235/radio/stop"
         , expect = Http.expectJson GotJson jsonDecoder
         }
 
@@ -100,7 +100,7 @@ sendStopRadio =
 sendAlarmOn : Cmd Msg
 sendAlarmOn =
     Http.get
-        { url = "http://192.168.0.234/alarm/on"
+        { url = "http://192.168.0.235/alarm/on"
         , expect = Http.expectJson GotJson jsonDecoder
         }
 
@@ -108,7 +108,7 @@ sendAlarmOn =
 sendAlarmOff : Cmd Msg
 sendAlarmOff =
     Http.get
-        { url = "http://192.168.0.234/alarm/off"
+        { url = "http://192.168.0.235/alarm/off"
         , expect = Http.expectJson GotJson jsonDecoder
         }
 
@@ -116,7 +116,7 @@ sendAlarmOff =
 sendChangeAlarmTime : String -> String -> Cmd Msg
 sendChangeAlarmTime hours mins =
     Http.get
-        { url = "http://192.168.0.234/alarm/time/" ++ hours ++ ":" ++ mins
+        { url = "http://192.168.0.235/alarm/time/" ++ hours ++ ":" ++ mins
         , expect = Http.expectJson GotJson jsonDecoder
         }
 
